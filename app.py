@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import streamlit as st
 import time
 import pandas as pd
@@ -299,9 +298,7 @@ col_exp1, col_exp2 = st.columns(2)
 with col_exp1:
     def generate_executive_report(dataframe):
         report_content = f"""
-==================================================
 GLOBAL ENTERPRISE RFM CUSTOMER INTELLIGENCE REPORT
-==================================================
 Generated Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 [EXECUTIVE SUMMARY METRICS]
@@ -313,9 +310,7 @@ Generated Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 [SEGMENT BREAKDOWN]
 {dataframe['Persona'].value_counts().to_string()}
 
-==================================================
 CONFIDENTIAL - C-SUITE EYES ONLY
-==================================================
         """
         return report_content
 
@@ -736,7 +731,6 @@ with tab9:
         st.divider()
         render_multi_agent_copilot()
     else:
-=======
 import streamlit as st
 import time
 import pandas as pd
@@ -1037,9 +1031,7 @@ col_exp1, col_exp2 = st.columns(2)
 with col_exp1:
     def generate_executive_report(dataframe):
         report_content = f"""
-==================================================
 GLOBAL ENTERPRISE RFM CUSTOMER INTELLIGENCE REPORT
-==================================================
 Generated Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 [EXECUTIVE SUMMARY METRICS]
@@ -1051,9 +1043,7 @@ Generated Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 [SEGMENT BREAKDOWN]
 {dataframe['Persona'].value_counts().to_string()}
 
-==================================================
 CONFIDENTIAL - C-SUITE EYES ONLY
-==================================================
         """
         return report_content
 
@@ -1474,5 +1464,4 @@ with tab9:
         st.divider()
         render_multi_agent_copilot()
     else:
->>>>>>> 6af47e19d123651d81cf7634e21fa0e138bd7707
         st.warning("Please load your dataset first.")
