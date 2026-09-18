@@ -731,7 +731,7 @@ with tab9:
         st.divider()
         render_multi_agent_copilot()
     else:
-import streamlit as st
+    import streamlit as st
 import time
 import pandas as pd
 import numpy as np
