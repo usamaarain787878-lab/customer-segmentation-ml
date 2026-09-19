@@ -88,7 +88,11 @@ if df is None or model is None:
     st.stop()
 
 # Normalize RFM columns before transformations and model scoring.
-for col in ['Monetary', 'Frequency', 'Recency']:\n    if col in df.columns:\n        df[col] = pd.to_numeric(df[col], errors='coerce')\n    else:\n        df[col] = 0
+for col in ["Monetary", "Frequency", "Recency"]:
+    if col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    else:
+        df[col] = 0
 
 df = df.dropna(subset=['Recency', 'Frequency', 'Monetary'])
 if df.empty:
