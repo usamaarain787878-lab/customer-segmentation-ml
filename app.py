@@ -88,8 +88,7 @@ if df is None or model is None:
     st.stop()
 
 # Normalize RFM columns before transformations and model scoring.
-for numeric_column in ['Monetary', 'Frequency', 'Recency']:
-    df[numeric_column] = pd.to_numeric(df[numeric_column], errors='coerce')
+for col in ['Monetary', 'Frequency', 'Recency']:\n    if col in df.columns:\n        df[col] = pd.to_numeric(df[col], errors='coerce')\n    else:\n        df[col] = 0
 
 df = df.dropna(subset=['Recency', 'Frequency', 'Monetary'])
 if df.empty:
@@ -730,12 +729,10 @@ with tab9:
 
         st.divider()
         render_multi_agent_copilot()
-    else:
-    import streamlit as st
 import time
 import pandas as pd
 import numpy as np
-import pickle
+    pass
 import os
 import plotly.express as px
 import plotly.graph_objects as go
@@ -821,8 +818,7 @@ if df is None or model is None:
     st.stop()
 
 # Normalize RFM columns before transformations and model scoring.
-for numeric_column in ['Monetary', 'Frequency', 'Recency']:
-    df[numeric_column] = pd.to_numeric(df[numeric_column], errors='coerce')
+for col in ['Monetary', 'Frequency', 'Recency']:\n    if col in df.columns:\n        df[col] = pd.to_numeric(df[col], errors='coerce')\n    else:\n        df[col] = 0
 
 df = df.dropna(subset=['Monetary', 'Frequency', 'Recency'])
 if df.empty:
