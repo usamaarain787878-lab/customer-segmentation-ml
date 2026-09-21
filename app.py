@@ -561,7 +561,7 @@ with tab4:
                 st.success("Dataset loaded successfully!")
                 st.write("**Uploaded Data Preview:**", batch_df.head(3))
                 st.markdown("---")
-                st.markdown("### Column Mapping Configuration")
+                st.markdown("### Map Your RFM Columns")
 
                 col_list = list(batch_df.columns)
 
@@ -571,41 +571,50 @@ with tab4:
                             return idx
                     return 0
 
+                customer_col = st.selectbox("Select Customer ID Column", col_list)
+                date_col = st.selectbox(
+                    "Select Date Column (for Recency)",
+                    col_list,
+                    index=get_default_index(["date", "time", "day"], col_list)
+                )
+                uploaded_monetary_col = st.selectbox(
+                    "Select Amount/Monetary Column",
+                    col_list,
+                    index=get_default_index(["monetary", "spend", "revenue", "amount", "total"], col_list)
+                )
+
+                st.markdown("### Additional RFM Mapping")
+
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    recency_col = st.selectbox(
-                        "Select Recency Column", numeric_batch_cols,
-                        index=get_default_index(['recency', 'day', 'recent'], numeric_batch_cols)
-                    )
-                with col2:
                     frequency_col = st.selectbox(
                         "Select Frequency Column", numeric_batch_cols,
                         index=get_default_index(['freq', 'count', 'transaction', 'order'], numeric_batch_cols)
                     )
+                with col2:
+                    st.caption(f"Customer ID: {customer_col}")
+                    st.caption(f"Recency source: {date_col}")
                 with col3:
-                    monetary_col = st.selectbox(
-                        "Select Monetary Column", numeric_batch_cols,
-                        index=get_default_index(['monetary', 'spend', 'revenue', 'amount', 'total'], numeric_batch_cols)
-                    )
+                    st.caption(f"Monetary source: {uploaded_monetary_col}")
 
                 if st.button("Process Batch Scoring with Selected Columns"):
                     processed_df = batch_df.copy()
-                    processed_df["Recency"] = pd.to_numeric(
-                        processed_df[recency_col]
-                        .astype(str)
-                        .str.replace(r"[^\d.]", "", regex=True),
-                        errors="coerce",
-                    )
+                    parsed_dates = pd.to_datetime(processed_df[date_col], errors="coerce")
+                    if parsed_dates.notna().sum() == 0:
+                        st.error("The selected date column could not be parsed into valid dates.")
+                        st.stop()
+
+                    processed_df["Recency"] = (
+                        parsed_dates.max() - parsed_dates
+                    ).dt.days
                     processed_df["Frequency"] = pd.to_numeric(
-                        processed_df[frequency_col]
-                        .astype(str)
-                        .str.replace(r"[^\d.]", "", regex=True),
+                        processed_df[frequency_col].astype(str).str.replace(r"[^\d.]", "", regex=True),
                         errors="coerce",
                     )
                     processed_df["Monetary"] = pd.to_numeric(
-                        processed_df[monetary_col]
+                        processed_df[uploaded_monetary_col]
                         .astype(str)
-                        .str.replace(r"[$,]", "", regex=True),
+                        .str.replace(r"[^\d.\-]", "", regex=True),
                         errors="coerce",
                     )
 
