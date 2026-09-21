@@ -109,6 +109,22 @@ if len(numeric_cols) < 3:
     st.error("⚠️ Error: The dataset does not have enough numeric columns for RFM analysis!")
     st.stop()
 
+recency_col = st.sidebar.selectbox("Select Recency Column", numeric_cols, index=0)
+frequency_col = st.sidebar.selectbox(
+    "Select Frequency Column",
+    numeric_cols,
+    index=1 if len(numeric_cols) > 1 else 0,
+)
+monetary_col = st.sidebar.selectbox(
+    "Select Monetary Column",
+    numeric_cols,
+    index=2 if len(numeric_cols) > 2 else 0,
+)
+
+df["Recency"] = df[recency_col]
+df["Frequency"] = df[frequency_col]
+df["Monetary"] = df[monetary_col]
+
 # Normalize RFM columns
 for col in ['Monetary', 'Frequency', 'Recency']:
     if col in df.columns:
@@ -520,93 +536,121 @@ with tab4:
     if uploaded_file is not None:
         try:
             batch_df = pd.read_csv(uploaded_file)
-            batch_df.columns = [str(col).strip() for col in batch_df.columns]
-            st.write("**Uploaded Data Preview:**", batch_df.head(3))
-            st.markdown("---")
-            st.markdown("### Column Mapping Configuration")
+            batch_df.columns = batch_df.columns.astype(str).str.strip()
 
-            col_list = list(batch_df.columns)
+            for column in batch_df.columns:
+                if batch_df[column].dtype == "object":
+                    converted = pd.to_numeric(
+                        batch_df[column]
+                        .astype(str)
+                        .str.replace(r"[^0-9.\-]", "", regex=True),
+                        errors="coerce",
+                    )
+                    if converted.notna().sum() > 0.4 * len(batch_df):
+                        batch_df[column] = converted
 
-            def get_default_index(keywords, options):
-                for idx, opt in enumerate(options):
-                    if any(k in opt.lower() for k in keywords):
-                        return idx
-                return 0
+            numeric_batch_cols = batch_df.select_dtypes(include=[np.number]).columns.tolist()
+            st.write(f"Detected Numeric Columns: {numeric_batch_cols}")
 
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                recency_col  = st.selectbox("Select Recency Column", col_list,
-                                             index=get_default_index(['recency', 'day', 'recent'], col_list))
-            with col2:
-                frequency_col = st.selectbox("Select Frequency Column", col_list,
-                                              index=get_default_index(['freq', 'count', 'transaction', 'order'], col_list))
-            with col3:
-                monetary_col  = st.selectbox("Select Monetary Column", col_list,
-                                              index=get_default_index(['monetary', 'spend', 'revenue', 'amount', 'total'], col_list))
-
-            if st.button("Process Batch Scoring with Selected Columns"):
-                processed_df = batch_df.copy()
-                processed_df["Recency"] = pd.to_numeric(
-                    processed_df[recency_col]
-                    .astype(str)
-                    .str.replace(r"[^\d.]", "", regex=True),
-                    errors="coerce",
+            if len(numeric_batch_cols) < 3:
+                st.error(
+                    "⚠️ The dataset does not have enough numeric columns for RFM analysis! "
+                    "Please ensure your CSV has numeric recency, frequency, and monetary values."
                 )
-                processed_df["Frequency"] = pd.to_numeric(
-                    processed_df[frequency_col]
-                    .astype(str)
-                    .str.replace(r"[^\d.]", "", regex=True),
-                    errors="coerce",
-                )
-                processed_df["Monetary"] = pd.to_numeric(
-                    processed_df[monetary_col]
-                    .astype(str)
-                    .str.replace(r"[$,]", "", regex=True),
-                    errors="coerce",
-                )
+            else:
+                st.success("Dataset loaded successfully!")
+                st.write("**Uploaded Data Preview:**", batch_df.head(3))
+                st.markdown("---")
+                st.markdown("### Column Mapping Configuration")
 
-                processed_df = processed_df.dropna(subset=["Recency", "Frequency", "Monetary"])
+                col_list = list(batch_df.columns)
 
-                if len(processed_df) == 0:
-                    st.error("Error: The selected columns resulted in 0 valid numeric rows!")
-                else:
-                    processed_df['Log_Frequency'] = np.log1p(processed_df['Frequency'])
-                    processed_df['Log_Monetary']  = np.log1p(processed_df['Monetary'])
-                    batch_preds = active_model.predict(processed_df[['Log_Frequency', 'Log_Monetary']].values)
-                    batch_info  = [get_customer_persona_and_playbook(c) for c in batch_preds]
-                    processed_df['Cluster']           = batch_preds
-                    processed_df['Persona']           = [item['persona'] for item in batch_info]
-                    processed_df['Marketing_Playbook'] = [item['action']  for item in batch_info]
-                    st.success("Batch processing completed successfully!")
-                    st.dataframe(processed_df, use_container_width=True)
-                    st.download_button(
-                        label="Download Segmented Batch Results (CSV)",
-                        data=processed_df.to_csv(index=False).encode('utf-8'),
-                        file_name="segmented_batch_customers.csv",
-                        mime="text/csv"
+                def get_default_index(keywords, options):
+                    for idx, opt in enumerate(options):
+                        if any(k in opt.lower() for k in keywords):
+                            return idx
+                    return 0
+
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    recency_col = st.selectbox(
+                        "Select Recency Column", numeric_batch_cols,
+                        index=get_default_index(['recency', 'day', 'recent'], numeric_batch_cols)
+                    )
+                with col2:
+                    frequency_col = st.selectbox(
+                        "Select Frequency Column", numeric_batch_cols,
+                        index=get_default_index(['freq', 'count', 'transaction', 'order'], numeric_batch_cols)
+                    )
+                with col3:
+                    monetary_col = st.selectbox(
+                        "Select Monetary Column", numeric_batch_cols,
+                        index=get_default_index(['monetary', 'spend', 'revenue', 'amount', 'total'], numeric_batch_cols)
                     )
 
-                    st.markdown("---")
-                    st.subheader("📊 Customer Segment Volume Chart")
+                if st.button("Process Batch Scoring with Selected Columns"):
+                    processed_df = batch_df.copy()
+                    processed_df["Recency"] = pd.to_numeric(
+                        processed_df[recency_col]
+                        .astype(str)
+                        .str.replace(r"[^\d.]", "", regex=True),
+                        errors="coerce",
+                    )
+                    processed_df["Frequency"] = pd.to_numeric(
+                        processed_df[frequency_col]
+                        .astype(str)
+                        .str.replace(r"[^\d.]", "", regex=True),
+                        errors="coerce",
+                    )
+                    processed_df["Monetary"] = pd.to_numeric(
+                        processed_df[monetary_col]
+                        .astype(str)
+                        .str.replace(r"[$,]", "", regex=True),
+                        errors="coerce",
+                    )
 
-                    if "Persona" in processed_df.columns:
-                        segment_counts = processed_df["Persona"].value_counts().reset_index()
-                        segment_counts.columns = ["Persona", "Customer_Count"]
+                    processed_df = processed_df.dropna(subset=["Recency", "Frequency", "Monetary"])
 
-                        fig_segment = px.bar(
-                            segment_counts,
-                            x="Persona",
-                            y="Customer_Count",
-                            color="Persona",
-                            title="Customer Distribution across Business Personas",
-                            text="Customer_Count",
-                        )
-                        fig_segment.update_layout(
-                            template="plotly_dark", margin=dict(l=10, r=10, t=40, b=10)
-                        )
-                        st.plotly_chart(fig_segment, use_container_width=True)
+                    if len(processed_df) == 0:
+                        st.error("Error: The selected columns resulted in 0 valid numeric rows!")
                     else:
-                        st.info("Persona column is loading...")
+                        processed_df['Log_Frequency'] = np.log1p(processed_df['Frequency'])
+                        processed_df['Log_Monetary']  = np.log1p(processed_df['Monetary'])
+                        batch_preds = active_model.predict(processed_df[['Log_Frequency', 'Log_Monetary']].values)
+                        batch_info  = [get_customer_persona_and_playbook(c) for c in batch_preds]
+                        processed_df['Cluster']           = batch_preds
+                        processed_df['Persona']           = [item['persona'] for item in batch_info]
+                        processed_df['Marketing_Playbook'] = [item['action']  for item in batch_info]
+                        st.success("Batch processing completed successfully!")
+                        st.dataframe(processed_df, use_container_width=True)
+                        st.download_button(
+                            label="Download Segmented Batch Results (CSV)",
+                            data=processed_df.to_csv(index=False).encode('utf-8'),
+                            file_name="segmented_batch_customers.csv",
+                            mime="text/csv"
+                        )
+
+                        st.markdown("---")
+                        st.subheader("📊 Customer Segment Volume Chart")
+
+                        if "Persona" in processed_df.columns:
+                            segment_counts = processed_df["Persona"].value_counts().reset_index()
+                            segment_counts.columns = ["Persona", "Customer_Count"]
+
+                            fig_segment = px.bar(
+                                segment_counts,
+                                x="Persona",
+                                y="Customer_Count",
+                                color="Persona",
+                                title="Customer Distribution across Business Personas",
+                                text="Customer_Count",
+                            )
+                            fig_segment.update_layout(
+                                template="plotly_dark", margin=dict(l=10, r=10, t=40, b=10)
+                            )
+                            st.plotly_chart(fig_segment, use_container_width=True)
+                        else:
+                            st.info("Persona column is loading...")
         except Exception as e:
             st.error(f"Error processing CSV file: {e}")
     else:
