@@ -77,7 +77,18 @@ st.divider()
 def load_data():
     if os.path.exists("cleaned_data.csv"):
         return pd.read_csv("cleaned_data.csv")
-    return None
+    np.random.seed(42)
+    sample_data = pd.DataFrame({
+        "CustomerID": [f"CUST_{index}" for index in range(1, 101)],
+        "Recency": np.random.randint(1, 90, 100),
+        "Frequency": np.random.randint(1, 15, 100),
+        "Monetary": np.random.uniform(100.0, 5000.0, 100),
+    })
+    st.warning(
+        "⚠️ Note: 'cleaned_data.csv' not found. Running with built-in enterprise "
+        "sample data to prevent deployment crash."
+    )
+    return sample_data
 
 @st.cache_resource
 def load_model():
@@ -89,8 +100,13 @@ def load_model():
 df = load_data()
 model = load_model()
 
-if df is None or model is None:
-    st.error("System Error: Dataset or Model weights missing in the root directory.")
+if df is None:
+    st.error("System Error: Dataset could not be loaded.")
+    st.stop()
+
+numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+if len(numeric_cols) < 3:
+    st.error("⚠️ Error: The dataset does not have enough numeric columns for RFM analysis!")
     st.stop()
 
 # Normalize RFM columns
